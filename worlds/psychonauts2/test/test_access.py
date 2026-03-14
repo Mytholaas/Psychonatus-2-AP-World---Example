@@ -429,35 +429,39 @@ class TestToggleablePinClassification(Psy2TestBase):
 
     def test_toggleable_pins_are_useful(self) -> None:
         """Each of the nine toggleable pins must be classified as useful."""
-        from worlds.psychonauts2.items import item_classifications
-        toggleable_pin_names = [
-            "Gag Order", "Pixel Pal", "Food for Thought", "Mental Tax",
-            "Rainblows", "Bobby Pin", "Mental Magnet", "VIP Discount",
-            "Beastmastery",
-        ]
-        for name in toggleable_pin_names:
+        from worlds.psychonauts2.items import (
+            item_classifications, TOGGLEABLE_PIN_KEYS, csv_key_to_display_name
+        )
+        for key in TOGGLEABLE_PIN_KEYS:
+            name = csv_key_to_display_name.get(key, key)
             cls = item_classifications.get(name)
             self.assertEqual(
                 cls,
                 ItemClassification.useful,
-                f"{name!r} should be classified as useful (toggleable pin)",
+                f"{name!r} (key {key!r}) should be classified as useful (toggleable pin)",
             )
 
     def test_non_toggleable_shop_pins_are_filler(self) -> None:
         """Pins that are NOT in the toggleable set should remain filler."""
-        from worlds.psychonauts2.items import item_classifications
-        non_toggleable_pins = [
-            "Psi Clone", "Wastepaper", "Heavy Thought", "Brain Drain",
-            "Mental Block", "Speed Reader", "Strike-onaut", "Goo Proof",
-            "Glass Cannon", "Psimultanium",
-        ]
-        for name in non_toggleable_pins:
+        from worlds.psychonauts2.items import (
+            item_classifications, TOGGLEABLE_PIN_KEYS, SHOP_ITEM_DISPLAY_NAMES,
+            csv_key_to_display_name
+        )
+        # Derive the set of toggleable pin display names.
+        toggleable_display = {
+            csv_key_to_display_name.get(k, k) for k in TOGGLEABLE_PIN_KEYS
+        }
+        # Non-toggleable shop items should be filler unless they are progression
+        # for some other reason (e.g. progressive equipment like "Progressive
+        # Carry Capacity" which is also sourced from the shop).
+        for name in SHOP_ITEM_DISPLAY_NAMES - toggleable_display:
             cls = item_classifications.get(name)
-            self.assertEqual(
-                cls,
-                ItemClassification.filler,
-                f"{name!r} should remain filler (non-toggleable pin)",
-            )
+            if cls is not None and cls != ItemClassification.progression:
+                self.assertEqual(
+                    cls,
+                    ItemClassification.filler,
+                    f"{name!r} is not a toggleable pin and should remain filler",
+                )
 
 
 class TestShopItemsDisabled(Psy2TestBase):
@@ -554,3 +558,37 @@ class TestShopItemsDisabled(Psy2TestBase):
             locked_shop_count, 48,
             f"Expected 48 locked shop locations, found {locked_shop_count}",
         )
+
+
+class TestSlotData(Psy2TestBase):
+    """Tests for fill_slot_data() output."""
+
+    def test_disable_rank_restrictions_always_true(self) -> None:
+        """disable_rank_restrictions must always be True in slot data.
+
+        Rank-level gates for pins and ability upgrades are never enforced by
+        the randomiser; the UE4 mod uses this flag to remove in-game rank
+        requirements regardless of the player's current rank.
+        """
+        slot_data = self.world.fill_slot_data()
+        self.assertIn(
+            "disable_rank_restrictions", slot_data,
+            "fill_slot_data() should include the disable_rank_restrictions key",
+        )
+        self.assertIs(
+            slot_data["disable_rank_restrictions"], True,
+            "disable_rank_restrictions should always be True",
+        )
+
+    def test_slot_data_keys_present(self) -> None:
+        """All expected slot data keys must be present."""
+        slot_data = self.world.fill_slot_data()
+        for key in (
+            "win_condition",
+            "required_items",
+            "starting_outfit",
+            "include_shop_items",
+            "disable_rank_restrictions",
+            "death_link",
+        ):
+            self.assertIn(key, slot_data, f"Slot data missing key: {key!r}")

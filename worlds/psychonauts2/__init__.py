@@ -51,6 +51,13 @@ Mod compatibility
         unlocked (they spawn in the Collective Unconscious).
       - Smelling Salts can be used to exit any mental world or the Collective
         Unconscious, routing the player to an available hub area.
+      - All Rank-level restrictions for purchasing Pins and unlocking ability
+        upgrades are removed.  In the base game these gates require specific
+        Rank thresholds (e.g. Rank 30 for Mental Connection - Dark Thoughts,
+        Rank 102 for Clairvoyance - Limitless); the randomiser removes them so
+        that any item can be received at any point in the seed.  The
+        ``disable_rank_restrictions`` slot-data flag tells the mod to apply
+        this behaviour.
 """
 
 import os
@@ -443,11 +450,13 @@ class Psy2World(World):
         """
         Return data that the Psychonauts 2 AP mod client will use at runtime.
 
-        win_condition      – integer value of the chosen WinCondition option
-        required_items     – list of item display names that must be obtained
-        starting_outfit    – display name of the outfit the player starts with
-        include_shop_items – whether shop check locations are in the world
-        death_link         – whether death-link is enabled
+        win_condition            – integer value of the chosen WinCondition option
+        required_items           – list of item display names that must be obtained
+        starting_outfit          – display name of the outfit the player starts with
+        include_shop_items       – whether shop check locations are randomised
+        disable_rank_restrictions – always True; tells the mod to remove all
+                                   Rank-level gates for pins and ability upgrades
+        death_link               – whether death-link is enabled
         """
         col = _WIN_COND_TO_COL.get(
             self.options.win_condition.value, "WinCondition_Normal"
@@ -461,5 +470,10 @@ class Psy2World(World):
             "required_items": WIN_CONDITION_REQUIRED_ITEMS.get(col, []),
             "starting_outfit": starting_outfit_display,
             "include_shop_items": bool(self.options.include_shop_items),
+            # Rank-level restrictions for pins and ability upgrades are always
+            # disabled in the randomiser so that any item can be received at
+            # any point during a seed.  The UE4 mod uses this flag to remove
+            # in-game rank gates regardless of what the player's current rank is.
+            "disable_rank_restrictions": True,
             "death_link": bool(self.options.death_link.value),
         }
