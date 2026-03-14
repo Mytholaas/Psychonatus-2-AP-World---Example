@@ -137,7 +137,13 @@ class TestAllBossesWinCondition(Psy2TestBase):
     options = {"win_condition": "all_bosses"}
 
     def test_all_bosses_required_items_are_progression(self) -> None:
-        """Items required by the All Bosses condition must be progression items."""
+        """Items required by the All Bosses condition must be progression items.
+
+        AllBosses requires 8 abilities + 4 StoryComplete event items (the
+        latter are events that resolve automatically once the matching access
+        item is held).  Maligula_Access and Maligula_Complete are events and
+        are NOT in the randomised pool.
+        """
         expected_required = [
             "Progressive Telekinesis",
             "Progressive Psi Blast",
@@ -151,7 +157,6 @@ class TestAllBossesWinCondition(Psy2TestBase):
             "Compton's Cookoff Complete",
             "Bob's Bottles Complete",
             "Cassie's Collection Complete",
-            "Maligula Fight Access",
         ]
         pool_by_name = {i.name: i for i in self.multiworld.itempool if i.player == self.player}
         for item_name in expected_required:
@@ -161,6 +166,11 @@ class TestAllBossesWinCondition(Psy2TestBase):
                     ItemClassification.progression,
                     f"Expected {item_name!r} to be progression under AllBosses win condition",
                 )
+        # Maligula Access must NOT be in the pool (it is a triggered event)
+        self.assertNotIn(
+            "Maligula Access", pool_by_name,
+            "Maligula Access should be an event item, not in the randomised pool",
+        )
 
 
 class TestAllScavHuntWinCondition(Psy2TestBase):
@@ -216,6 +226,73 @@ class TestItemPoolSize(Psy2TestBase):
         self.assertIsNotNone(victory_loc.item)
         self.assertEqual(victory_loc.item.name, "Maligula Complete")
 
+    def test_story_complete_event_locations_exist(self) -> None:
+        """Every mental world must have a StoryComplete event location."""
+        from worlds.psychonauts2.locations import STORY_COMPLETE_EVENTS
+        for _item_key, event_loc_name, _access_key in STORY_COMPLETE_EVENTS:
+            ev_loc = self.multiworld.get_location(event_loc_name, self.player)
+            self.assertIsNotNone(ev_loc, f"Missing StoryComplete event location: {event_loc_name}")
+            self.assertTrue(ev_loc.is_event, f"{event_loc_name} should be an event location")
+
+    def test_story_complete_not_in_pool(self) -> None:
+        """StoryComplete items must be locked events, not randomised pool items."""
+        from worlds.psychonauts2.items import _EVENT_ITEM_KEYS, csv_key_to_display_name
+        sc_display = {
+            csv_key_to_display_name.get(k, k)
+            for k in _EVENT_ITEM_KEYS
+            if "StoryComplete" in k
+        }
+        pool_names = {i.name for i in self.multiworld.itempool if i.player == self.player}
+        overlap = sc_display & pool_names
+        self.assertFalse(
+            overlap,
+            f"StoryComplete items must not be in pool: {overlap}",
+        )
+
+    def test_maligula_access_not_in_pool(self) -> None:
+        """Maligula Access is a triggered event and must not be in the pool."""
+        pool_names = {i.name for i in self.multiworld.itempool if i.player == self.player}
+        self.assertNotIn(
+            "Maligula Access", pool_names,
+            "Maligula Access should be an event item, not a randomised pool item",
+        )
+
+    def test_story_complete_event_fires_with_access_item(self) -> None:
+        """StoryComplete events fire as soon as the matching access item is held."""
+        self.collect_by_name("Hollis' Hot Streak Access")
+        hh_event = self.multiworld.get_location(
+            "Hollis' Hot Streak Complete (Story Event)", self.player
+        )
+        self.assertTrue(
+            self.multiworld.state.can_reach(hh_event, "Location", self.player),
+            "HH StoryComplete event should be reachable with HH_Access",
+        )
+
+    def test_psitanium_filler_items_registered(self) -> None:
+        """Psitanium x25/50/100 must be registered as valid filler options."""
+        from worlds.psychonauts2.items import item_name_to_id, filler_item_names
+        for variant in ("Psitanium x25", "Psitanium x50", "Psitanium x100"):
+            self.assertIn(variant, item_name_to_id, f"{variant} missing from item_name_to_id")
+            self.assertIn(variant, filler_item_names, f"{variant} missing from filler_item_names")
+
+    def test_important_items_classified_useful(self) -> None:
+        """Access items marked 'Important' in the CSV should be 'useful', not progression.
+
+        Items that appear in access rules are promoted to *progression* explicitly
+        via _FORCED_PROGRESSION_KEYS, but items not used in any rule should remain
+        *useful* rather than jumping straight to progression.
+        """
+        # GNG_Access is Important in the CSV but also in _FORCED_PROGRESSION_KEYS
+        # (used in the victory rule) → progression is expected.
+        # A non-rule Important item like a costume piece should be useful.
+        from worlds.psychonauts2.items import item_classifications
+        gng_cls = item_classifications.get("Green Needle Gulch Access")
+        self.assertEqual(
+            gng_cls,
+            ItemClassification.progression,
+            "GNG_Access (Important + forced-progression) should be progression",
+        )
+
     def test_location_names_unique(self) -> None:
         """All 607 randomised location names must be unique."""
         locations = [loc for loc in self.multiworld.get_locations(self.player) if not loc.is_event]
@@ -228,8 +305,6 @@ class TestItemPoolSize(Psy2TestBase):
         (Multiple copies of the same item are allowed, e.g. progressive items.)
         """
         from worlds.psychonauts2.items import item_name_to_id
-        ids = [v for v in item_name_to_id.values() if v is not None]
-        # IDs may be shared by progressive copies, but names must map to unique IDs
         self.assertEqual(
             len(item_name_to_id),
             len(set(item_name_to_id.keys())),

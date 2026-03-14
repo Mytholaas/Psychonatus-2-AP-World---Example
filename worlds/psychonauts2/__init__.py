@@ -69,6 +69,7 @@ from .items import (
     csv_key_to_display_name,
     WIN_CONDITION_REQUIRED_ITEMS,
     VICTORY_ITEM_NAME,
+    MALIGULA_ACCESS_ITEM_NAME,
 )
 from .locations import (
     Psy2Location,
@@ -79,6 +80,7 @@ from .locations import (
     AREA_TO_REGION,
     REGION_ACCESS_ITEM,
     LocationData,
+    STORY_COMPLETE_EVENTS,
 )
 from .options import Psy2Options, WinCondition
 from .rules import set_rules
@@ -211,12 +213,18 @@ class Psy2World(World):
             self.multiworld.itempool.append(item)
 
     def get_filler_item_name(self) -> str:
-        """Return a random junk item name for pool padding."""
-        # Weighted selection: PsiCore appears most often since it has the
-        # highest Max_Quantity in the CSV (11), followed by PsiPop (8) and
-        # DreamFluff (3).
-        weights = [11, 8, 3]
-        return self.random.choices(filler_item_names, weights=weights, k=1)[0]
+        """Return a random junk item name for pool padding.
+
+        Weights are proportional to each item's desirability as filler.
+        Psitanium currency variants (25/50/100) are included alongside the
+        existing consumable junk items (PsiCore, PsiPop, DreamFluff).
+        """
+        # filler_item_names order: PsiCore, PsiPop, DreamFluff,
+        #                          Psitanium x25, Psitanium x50, Psitanium x100
+        weights = [11, 8, 3, 8, 5, 3]
+        # Guard against the list being shorter than expected (e.g. in tests)
+        w = weights[: len(filler_item_names)]
+        return self.random.choices(filler_item_names, weights=w, k=1)[0]
 
     # ---------------------------------------------------------------------------
     # Region and location creation
@@ -277,6 +285,18 @@ class Psy2World(World):
             region.locations.append(location)
             self.all_location_data.append(loc_data)
 
+        # Create StoryComplete event locations in the Global region.
+        # Each fires when the player holds the corresponding mental-world access
+        # item, making the locked StoryComplete event item available for rules.
+        global_region = created_regions["Global"]
+        for item_key, event_loc_name, access_key in STORY_COMPLETE_EVENTS:
+            event_loc = Psy2Location(self.player, event_loc_name, None, global_region)
+            access_display = csv_key_to_display_name.get(access_key, access_key)
+            event_loc.access_rule = (
+                lambda state, n=access_display, p=self.player: state.has(n, p)
+            )
+            global_region.locations.append(event_loc)
+
         # Create the victory event location in Green Needle Gulch (or Global
         # as fallback if GNG region does not exist).
         gng_region = created_regions.get("Green Needle Gulch", created_regions["Global"])
@@ -298,10 +318,13 @@ class Psy2World(World):
 
     def generate_basic(self) -> None:
         """
-        Place the Victory event item at the Maligula fight location and
-        configure the goal condition.
+        Place all event items and configure the win condition.
+
+        Events placed:
+          - Maligula Complete  → victory location (Green Needle Gulch)
+          - {World} Complete   → 13 StoryComplete event locations (Global region)
         """
-        # Create and place the victory event.
+        # ── Victory event ────────────────────────────────────────────────────
         victory_item = Psy2Item(
             VICTORY_ITEM_NAME,
             ItemClassification.progression,
@@ -311,8 +334,22 @@ class Psy2World(World):
         victory_loc = self.multiworld.get_location(victory_location.name, self.player)
         victory_loc.place_locked_item(victory_item)
 
-        # The win condition is satisfied when the player has collected the
-        # victory event item.
+        # ── StoryComplete events ─────────────────────────────────────────────
+        # Each mental world's completion fires an event so that rules requiring
+        # e.g. "Loboto_StoryComplete" can be satisfied via state.has().
+        for item_key, event_loc_name, _access_key in STORY_COMPLETE_EVENTS:
+            display_name = csv_key_to_display_name.get(item_key, item_key)
+            event_item = Psy2Item(
+                display_name,
+                ItemClassification.progression,
+                None,
+                self.player,
+            )
+            event_loc = self.multiworld.get_location(event_loc_name, self.player)
+            event_loc.place_locked_item(event_item)
+
+        # ── Win condition ─────────────────────────────────────────────────────
+        # The seed is beaten when the player collects the victory event item.
         self.multiworld.completion_condition[self.player] = lambda state: state.has(
             VICTORY_ITEM_NAME, self.player
         )

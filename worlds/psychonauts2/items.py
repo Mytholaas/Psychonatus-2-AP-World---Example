@@ -103,11 +103,53 @@ ALL_PROGRESSIVE_GROUPS: Dict[str, str] = {
 VICTORY_ITEM_NAME: str = "Maligula Complete"
 """Display name of the victory event item placed at the Maligula fight check."""
 
-# CSV keys that become event items (no numeric ID; never randomised).
-_EVENT_ITEM_KEYS: Set[str] = {"Maligula_Complete"}
+MALIGULA_ACCESS_ITEM_NAME: str = "Maligula Access"
+"""Display name of the Maligula Access event (triggered by win-condition logic)."""
+
+# ---------------------------------------------------------------------------
+# Event item keys and display-name overrides
+# ---------------------------------------------------------------------------
+
+# CSV item keys that become locked event items (no numeric ID, never randomised).
+# StoryComplete events are placed at dedicated event locations in each mental
+# world – they fire automatically when the player holds that world's access item.
+# Maligula_Access is a triggered event; Maligula_Complete is the victory event.
+_EVENT_ITEM_KEYS: Set[str] = {
+    "Maligula_Complete",
+    "Maligula_Access",
+    # Mental-world story completion events (one per mental world):
+    "Loboto_StoryComplete",
+    "HC_StoryComplete",
+    "HH_StoryComplete",
+    "Compton_StoryComplete",
+    "PsiKing_StoryComplete",
+    "Ford_StoryComplete",
+    "StrikeCity_StoryComplete",
+    "Cruller_StoryComplete",
+    "Tomb_StoryComplete",
+    "Bob_StoryComplete",
+    "Cassie_StoryComplete",
+    "Lucy_StoryComplete",
+    "Nick_StoryComplete",
+}
+
+# Override display names for specific event items (all others use the CSV Name).
+_EVENT_ITEM_DISPLAY_NAMES: Dict[str, str] = {
+    "Maligula_Complete": VICTORY_ITEM_NAME,
+    "Maligula_Access":   MALIGULA_ACCESS_ITEM_NAME,
+}
+
+# ---------------------------------------------------------------------------
+# Filler item keys
+# ---------------------------------------------------------------------------
 
 # CSV keys used as weighted filler when the pool needs padding.
-FILLER_ITEM_KEYS: List[str] = ["PsiCore", "PsiPop", "DreamFluff"]
+# Psitanium currency variants (25 / 50 / 100) are added via _EXTRA_ITEM_ROWS
+# with Max_Quantity "0" so they appear only as padding, never as base-pool items.
+FILLER_ITEM_KEYS: List[str] = [
+    "PsiCore", "PsiPop", "DreamFluff",
+    "Psitanium_25", "Psitanium_50", "Psitanium_100",
+]
 
 # ---------------------------------------------------------------------------
 # Forced-progression override
@@ -118,35 +160,59 @@ FILLER_ITEM_KEYS: List[str] = ["PsiCore", "PsiPop", "DreamFluff"]
 # state.has() which queries prog_items, so any item that appears in a rule MUST
 # have the progression classification – regardless of what the CSV says.
 #
-# The items listed here are either Normal or Junk in the CSV but appear in the
-# Item_Required column of the check CSV, meaning state.has() must recognise them.
+# The CSV uses "Important" for helpful items, but that maps to *useful* here
+# (see _classification_from_csv).  Every item key that appears as a requirement
+# in the check CSV therefore needs an explicit progression override so
+# state.has() can recognise it.
 _FORCED_PROGRESSION_KEYS: frozenset = frozenset({
-    # Hub-area access items (Normal in the item CSV)
+    # ── Hub-area access items (Normal in the CSV) ────────────────────────────
     "Motherlobe_Access",
     "Quarry_Access",
     "QA_Access",
-    # Shop prerequisite (Junk in the item CSV)
-    "Otto-Shot",
-    # Extra item gating the Bowling Alley (not in the item CSV; added as Normal)
+    # ── Mental-world access items (Important → useful without override) ──────
+    "GNG_Access",
+    "Loboto_Access",
+    "HC_Access",
+    "HH_Access",
+    "Compton_Access",
+    "PsiKing_Access",
+    "Ford_Access",
+    "StrikeCity_Access",
+    "Cruller_Access",
+    "Tomb_Access",
+    "Bob_Access",
+    "Cassie_Access",
+    "Lucy_Access",
+    "Nick_Access",
+    # ── Non-ability items used directly in check rules ───────────────────────
+    "ThoughtTuner",   # Important; gates Psy Challenge Markers / some Psi Cards
+    "Melee",          # Important; gates two Motherlobe checks
+    "Otto-Shot",      # Junk; gates the Otto-Shop filter items
+    # ── Extra item gating the Bowling Alley (added via _EXTRA_ITEM_ROWS) ─────
     "Senior_League_Card",
-    # The 16 scavenger-hunt collectibles (Normal in the item CSV).
-    # They appear in rules via the "All_ScavHunt_Items" macro which expands to
-    # one state.has() call per item.
+    # ── Scavenger-hunt collectibles (Normal in the CSV) ──────────────────────
+    # Referenced by the "All_ScavHunt_Items" macro in the check CSV.
     "DayOldSushi", "EnemySurveillanceDevice", "NamePlaque", "DeckOfCards",
     "AstronautIceCream", "Laserdisc", "UnexplodedBomb", "PsitaniumKnife",
     "Human_Skull", "Novelty_Mug", "Can_of_Corn", "Switchblade_Hatchet",
     "MurderBot", "Beehive", "VikingHelmet", "Mindswarm",
 })
 
-# Extra items missing from the CSV but needed for complete rule coverage.
+# Extra items missing from the CSV but needed for complete rule / pool coverage.
+# Max_Quantity "0" means the item is registered (gets an ID, appears as filler)
+# but no copies start in the base pool – it is used only for padding.
 _EXTRA_ITEM_ROWS: List[Dict[str, str]] = [
     {
         "Index":        "558",
         "Item":         "Senior_League_Card",
         "Name":         "Senior League Card",
-        "Item_Type":    "Important",   # Gates the Bowling Alley; must be progression
+        "Item_Type":    "Normal",   # Forced to progression via _FORCED_PROGRESSION_KEYS
         "Max_Quantity": "1",
-    }
+    },
+    # Psitanium currency – pure junk, used only for pool-padding filler.
+    {"Index": "559", "Item": "Psitanium_25",  "Name": "Psitanium x25",  "Item_Type": "Junk", "Max_Quantity": "0"},
+    {"Index": "560", "Item": "Psitanium_50",  "Name": "Psitanium x50",  "Item_Type": "Junk", "Max_Quantity": "0"},
+    {"Index": "561", "Item": "Psitanium_100", "Name": "Psitanium x100", "Item_Type": "Junk", "Max_Quantity": "0"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -168,12 +234,17 @@ SCAV_HUNT_ITEM_KEYS: List[str] = [
 # ---------------------------------------------------------------------------
 
 def _classification_from_csv(item_type: str) -> ItemClassification:
-    """Map an Item_Type string from the CSV to an Archipelago classification."""
-    if item_type == "Important":
-        return ItemClassification.progression
+    """Map an Item_Type string from the CSV to an Archipelago classification.
+
+    "Important" maps to *useful* (helpful but not logically required to win).
+    Only items explicitly listed in the active win condition, plus items in
+    _FORCED_PROGRESSION_KEYS, receive the *progression* classification.
+    """
     if item_type == "Junk":
         return ItemClassification.filler
-    return ItemClassification.useful  # "Normal"
+    # Both "Normal" and "Important" map to useful; progression is applied
+    # later via _FORCED_PROGRESSION_KEYS or win-condition promotion.
+    return ItemClassification.useful
 
 
 def _item_type_suffix_from_key(item_key: str) -> str:
@@ -220,7 +291,7 @@ def _build_tables() -> Tuple[
     Returns
     -------
     item_name_to_id
-        {display_name: integer_id}.  The victory event maps to None.
+        {display_name: integer_id}.  Event items map to None.
     item_classifications
         {display_name: ItemClassification} for every randomised item.
     filler_item_names
@@ -247,22 +318,24 @@ def _build_tables() -> Tuple[
     base_item_pool: List[Tuple[str, ItemClassification]] = []
     csv_key_to_display: Dict[str, str] = {}
 
-    # Register the victory event with a None ID so the world can reference it.
-    item_name_to_id[VICTORY_ITEM_NAME] = None
-
     for row in rows:
         key: str = row["Item"]
 
-        # ── Victory event: register mapping but skip pool placement ──────────
+        # ── Event items: register name mapping but skip pool placement ────────
+        # StoryComplete items and Maligula_Access are placed as locked events
+        # at dedicated event locations; Maligula_Complete is the victory event.
         if key in _EVENT_ITEM_KEYS:
-            csv_key_to_display[key] = VICTORY_ITEM_NAME
+            display_name = _EVENT_ITEM_DISPLAY_NAMES.get(key, row["Name"])
+            csv_key_to_display[key] = display_name
+            if display_name not in item_name_to_id:
+                item_name_to_id[display_name] = None  # Events have no numeric ID
             continue
 
         # ── Determine display name ───────────────────────────────────────────
         if key in ALL_PROGRESSIVE_GROUPS:
             display_name = ALL_PROGRESSIVE_GROUPS[key]
-            # Progressive base items carry progression classification regardless
-            # of what the CSV says for upgrades (upgrades are listed as Normal).
+            # All progressive copies share one display name and one ID.
+            # They are always progression so the player levels up through them.
             classification = ItemClassification.progression
         else:
             base_name = row["Name"]
@@ -272,7 +345,8 @@ def _build_tables() -> Tuple[
                 display_name = f"{base_name} ({suffix})"
             else:
                 display_name = base_name
-            # Honour the forced-progression override first; fall back to CSV type.
+            # Items used in access rules must be progression so state.has()
+            # can track them, regardless of their CSV type.
             if key in _FORCED_PROGRESSION_KEYS:
                 classification = ItemClassification.progression
             else:
@@ -288,10 +362,11 @@ def _build_tables() -> Tuple[
 
         # ── Determine how many copies go into the pool ───────────────────────
         qty_str = row.get("Max_Quantity", "")
-        if qty_str and qty_str not in ("", "NULL"):
+        # Use explicit "0" to mean zero copies (pool-padding-only items like
+        # Psitanium).  Empty / NULL defaults to 1 (singleton).
+        if qty_str not in ("", "NULL", None):
             qty = int(qty_str)
         else:
-            # Empty Max_Quantity → singleton (StoryComplete / access items)
             qty = 1
 
         for _ in range(qty):
@@ -350,14 +425,15 @@ def _build_win_condition_tables() -> Tuple[
                 if val:
                     columns[col].append(val)
 
-    # These entries describe events (fight activation / completion) that are
-    # handled by the victory location rule, not by individual item requirements.
-    # "Maligula_Complete" is the victory event item and must also be excluded
-    # from the required-item list (it is placed as a locked event, not randomised).
+    # Event keys that are handled by the victory rule, not as collectible items.
+    # Maligula_Access is a triggered event; the fight and its completion are
+    # implicit in the win condition once the player has all required items.
+    # Both old ("_Fight_") and corrected names are listed for safety.
     skip_keys: Set[str] = {
-        "Maligula_Fight_Access",
-        "Maligula_Fight_Complete",
-        "Maligula_Complete",
+        "Maligula_Access",         # correct name – triggered event, not a pool item
+        "Maligula_Complete",       # correct name – victory event
+        "Maligula_Fight_Access",   # old incorrect name (kept for compatibility)
+        "Maligula_Fight_Complete", # old incorrect name (kept for compatibility)
     }
 
     win_condition_required: Dict[str, List[str]] = {}

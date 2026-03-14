@@ -212,5 +212,35 @@ all_randomised_locations: List[LocationData] = [
     loc for loc in location_data_by_key.values() if loc.location_id is not None
 ]
 
-# The single event location
+# The single victory event location
 victory_location: LocationData = location_data_by_key[VICTORY_LOCATION_KEY]
+
+# ---------------------------------------------------------------------------
+# StoryComplete event locations
+# ---------------------------------------------------------------------------
+
+# Each mental world has a "StoryComplete" event location.  When the player
+# holds that world's access item, the event fires and the matching event item
+# (e.g. "Loboto's Labrynth Complete") is collected.  This lets access rules
+# that require a StoryComplete item resolve correctly without that item being
+# in the randomised pool.
+#
+# The event location name includes " (Story Event)" to keep it distinct from
+# the randomised check location that shares the same base Name in the CSV.
+#
+# Tuple layout: (item_csv_key, event_location_name, region_access_item_key)
+STORY_COMPLETE_EVENTS: List[Tuple[str, str, str]] = [
+    ("Loboto_StoryComplete",     "Loboto's Labrynth Complete (Story Event)",        "Loboto_Access"),
+    ("HC_StoryComplete",         "Hollis' Classroom Complete (Story Event)",         "HC_Access"),
+    ("HH_StoryComplete",         "Hollis' Hot Streak Complete (Story Event)",        "HH_Access"),
+    ("Compton_StoryComplete",    "Compton's Cookoff Complete (Story Event)",         "Compton_Access"),
+    ("PsiKing_StoryComplete",    "Psi King's Sensorium Complete (Story Event)",      "PsiKing_Access"),
+    ("Ford_StoryComplete",       "Ford's Follicles Complete (Story Event)",          "Ford_Access"),
+    ("StrikeCity_StoryComplete", "Strike City Complete (Story Event)",               "StrikeCity_Access"),
+    ("Cruller_StoryComplete",    "Cruller's Correspondence Complete (Story Event)",  "Cruller_Access"),
+    ("Tomb_StoryComplete",       "Tomb of the Sharkophagus Complete (Story Event)", "Tomb_Access"),
+    ("Bob_StoryComplete",        "Bob's Bottles Complete (Story Event)",             "Bob_Access"),
+    ("Cassie_StoryComplete",     "Cassie's Collection Complete (Story Event)",       "Cassie_Access"),
+    ("Lucy_StoryComplete",       "Lucrecia's Lament Complete (Story Event)",         "Lucy_Access"),
+    ("Nick_StoryComplete",       "Fatherland Follies Complete (Story Event)",        "Nick_Access"),
+]
