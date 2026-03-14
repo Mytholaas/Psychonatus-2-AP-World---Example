@@ -10,10 +10,10 @@ PsitaniumKnife,PsitaniumKnife,Projection,Ford_Access
 Human_Skull,Human_Skull,HH_StoryComplete,StrikeCity_Access
 Novelty_Mug,Novelty_Mug,Compton_StoryComplete,Cruller_Access
 Can_of_Corn,Can_of_Corn,Bob_StoryComplete,Tomb_Access
-Switchblade_Hatchet,Switchblade_Hatchet,Cassie_StoryComplete,Maligula_Fight_Access
-MurderBot,MurderBot,Maligula_Access,Maligula_Fight_Complete
+Switchblade_Hatchet,Switchblade_Hatchet,Cassie_StoryComplete,Maligula_Access
+MurderBot,MurderBot,Maligula_Access,Maligula_Complete
 Beehive,Beehive,Maligula_Complete,
 VikingHelmet,VikingHelmet,,
 Mindswarm,Mindswarm,,
-Maligula_Fight_Access,,,
-Maligula_Fight_Complete,,,
+,Maligula_Access,,
+,Maligula_Complete,,
