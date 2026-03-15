@@ -1,0 +1,24 @@
+# Unreal Engine 4 pak extraction script for QuickBMS
+# Works with UE4.0 - UE4.27
+
+get MAGIC long
+get VERSION long
+get OFFSET longlong
+goto OFFSET
+
+get COUNT long
+for i = 0 < COUNT
+    get NAME_SIZE long
+    getdstring NAME NAME_SIZE
+    get UNK1 longlong
+    get OFFSET longlong
+    get ZSIZE longlong
+    get SIZE longlong
+    get UNK2 long
+    
+    if ZSIZE != SIZE
+        clog NAME OFFSET ZSIZE SIZE
+    else
+        log NAME OFFSET SIZE
+    endif
+next i

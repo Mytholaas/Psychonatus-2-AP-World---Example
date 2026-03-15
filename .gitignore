@@ -199,3 +199,8 @@ _speedups.html
 .LSOverride
 Thumbs.db
 [Dd]esktop.ini
+
+# Extracted game data
+extracted_data/
+extracted_fmodel_data/
+extracted_pak_data/
