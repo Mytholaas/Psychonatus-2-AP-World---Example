@@ -18,15 +18,14 @@ Item-key normalisation:
 
 Progressive ability / equipment rules:
   For progressive items the rule checks ``state.has(name, player, count)``
-  where count is the 1-based position within the four-tier group:
-    base ability    → count 1
-    _Upgrade1       → count 2
-    _Upgrade2       → count 3
-    _Upgrade3       → count 4
+  where count is derived from the item's position in ALL_PROGRESSIVE_GROUPS:
+    first key in group  → count 1
+    second key in group → count 2
+    …and so on.
 """
 
 from typing import Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
-from worlds.generic.Rules import set_rule, add_rule
+from worlds.generic.Rules import set_rule
 
 if TYPE_CHECKING:
     from BaseClasses import CollectionState, MultiWorld
@@ -35,64 +34,29 @@ if TYPE_CHECKING:
 from .items import (
     ALL_PROGRESSIVE_GROUPS,
     SCAV_HUNT_DISPLAY_NAMES,
+    WIN_CONDITION_REQUIRED_ITEMS,
     csv_key_to_display_name,
 )
+from .locations import REGION_ACCESS_ITEM, victory_location
+from .options import WIN_COND_TO_COL
 
 # ---------------------------------------------------------------------------
 # Progressive-item count table
 # ---------------------------------------------------------------------------
 
-# How many copies of a progressive item each upgrade level requires.
-# base ability = 1 copy found, _Upgrade1 = 2 copies found, …
-_PROGRESSIVE_COUNTS: Dict[str, Tuple[str, int]] = {
-    # Telekinesis
-    "Telekinesis":               ("Progressive Telekinesis", 1),
-    "Telekinesis_Upgrade1":      ("Progressive Telekinesis", 2),
-    "Telekinesis_Upgrade2":      ("Progressive Telekinesis", 3),
-    "Telekinesis_Upgrade3":      ("Progressive Telekinesis", 4),
-    # Psi Blast
-    "PsiBlast":                  ("Progressive Psi Blast", 1),
-    "PsiBlast_Upgrade1":         ("Progressive Psi Blast", 2),
-    "PsiBlast_Upgrade2":         ("Progressive Psi Blast", 3),
-    "PsiBlast_Upgrade3":         ("Progressive Psi Blast", 4),
-    # Pyrokinesis
-    "Pyrokinesis":               ("Progressive Pyrokinesis", 1),
-    "Pyrokinesis_Upgrade1":      ("Progressive Pyrokinesis", 2),
-    "Pyrokinesis_Upgrade2":      ("Progressive Pyrokinesis", 3),
-    "Pyrokinesis_Upgrade3":      ("Progressive Pyrokinesis", 4),
-    # Levitation
-    "Levitation":                ("Progressive Levitation", 1),
-    "Levitation_Upgrade1":       ("Progressive Levitation", 2),
-    "Levitation_Upgrade2":       ("Progressive Levitation", 3),
-    "Levitation_Upgrade3":       ("Progressive Levitation", 4),
-    # Clairvoyance
-    "Clairvoyance":              ("Progressive Clairvoyance", 1),
-    "Clairvoyance_Upgrade1":     ("Progressive Clairvoyance", 2),
-    "Clairvoyance_Upgrade2":     ("Progressive Clairvoyance", 3),
-    "Clairvoyance_Upgrade3":     ("Progressive Clairvoyance", 4),
-    # Mental Connection
-    "MentalConnection":          ("Progressive Mental Connection", 1),
-    "MentalConnection_Upgrade1": ("Progressive Mental Connection", 2),
-    "MentalConnection_Upgrade2": ("Progressive Mental Connection", 3),
-    "MentalConnection_Upgrade3": ("Progressive Mental Connection", 4),
-    # Time Bubble
-    "TimeBubble":                ("Progressive Time Bubble", 1),
-    "TimeBubble_Upgrade1":       ("Progressive Time Bubble", 2),
-    "TimeBubble_Upgrade2":       ("Progressive Time Bubble", 3),
-    "TimeBubble_Upgrade3":       ("Progressive Time Bubble", 4),
-    # Projection
-    "Projection":                ("Progressive Projection", 1),
-    "Projection_Upgrade1":       ("Progressive Projection", 2),
-    "Projection_Upgrade2":       ("Progressive Projection", 3),
-    "Projection_Upgrade3":       ("Progressive Projection", 4),
-    # Equipment progressives
-    "MindsEyelets":    ("Progressive Carry Capacity", 1),
-    "Expandolier":     ("Progressive Carry Capacity", 2),
-    "FluffPockets":    ("Progressive Fluff Pouch", 1),
-    "JumboFluffPouch": ("Progressive Fluff Pouch", 2),
-    "PsifoldWallet":   ("Progressive Wallet", 1),
-    "AstralWallet":    ("Progressive Wallet", 2),
-}
+# Derive (progressive_name, count) for each CSV key from ALL_PROGRESSIVE_GROUPS.
+# Counts are assigned in insertion order: the first key in a group gets count 1,
+# the second gets count 2, etc.  This mirrors the hand-coded table it replaces
+# without duplicating the group definitions.
+def _build_progressive_counts() -> Dict[str, Tuple[str, int]]:
+    group_counters: Dict[str, int] = {}
+    result: Dict[str, Tuple[str, int]] = {}
+    for key, group_name in ALL_PROGRESSIVE_GROUPS.items():
+        group_counters[group_name] = group_counters.get(group_name, 0) + 1
+        result[key] = (group_name, group_counters[group_name])
+    return result
+
+_PROGRESSIVE_COUNTS: Dict[str, Tuple[str, int]] = _build_progressive_counts()
 
 
 # ---------------------------------------------------------------------------
@@ -218,22 +182,8 @@ def set_rules(world: "Psy2World") -> None:
     The Maligula victory location's rule is also set here because it depends
     on the player's chosen win condition.
     """
-    from .locations import REGION_ACCESS_ITEM, victory_location
-    from .options import WinCondition
-    from .items import WIN_CONDITION_REQUIRED_ITEMS, csv_key_to_display_name
-
     multiworld: "MultiWorld" = world.multiworld
     player: int = world.player
-
-    # Map region name → area-access item display name for quick lookup.
-    region_access_display: Dict[str, Optional[str]] = {}
-    for region_name, access_key in REGION_ACCESS_ITEM.items():
-        if access_key is None:
-            region_access_display[region_name] = None
-        else:
-            region_access_display[region_name] = csv_key_to_display_name.get(
-                access_key, access_key
-            )
 
     # ── Per-location rules ───────────────────────────────────────────────────
     for loc_data in world.all_location_data:
@@ -264,18 +214,7 @@ def _set_victory_rule(world: "Psy2World", player: int) -> None:
       1. GNG_Access (the fight always takes place in Green Needle Gulch).
       2. All items required by the player's chosen win condition.
     """
-    from .items import WIN_CONDITION_REQUIRED_ITEMS, csv_key_to_display_name
-    from .options import WinCondition
-    from .locations import victory_location
-
-    win_cond_value: int = world.options.win_condition.value
-    win_cond_map = {
-        WinCondition.option_normal:                "WinCondition_Normal",
-        WinCondition.option_all_bosses:            "WinCondition_AllBosses",
-        WinCondition.option_all_scav_hunt:         "WinCondition_AllScavHunt",
-        WinCondition.option_scav_hunt_and_maligula:"WinCondition_ScavHunt_and_Maligula",
-    }
-    col = win_cond_map[win_cond_value]
+    col = WIN_COND_TO_COL.get(world.options.win_condition.value, "WinCondition_Normal")
     required_display_names: List[str] = WIN_CONDITION_REQUIRED_ITEMS.get(col, [])
 
     # Build a list of individual has() checks.
@@ -284,27 +223,10 @@ def _set_victory_rule(world: "Psy2World", player: int) -> None:
         n for n in required_display_names if n != gng_display
     ]
 
-    # Resolve progressive items: if the win condition lists a raw ability key,
-    # convert it to the appropriate progressive check.
-    checks: List[CollectionRule] = []
-    for display in required_items:
-        # Check if this display name is the base of a progressive group
-        if display in (
-            "Progressive Telekinesis", "Progressive Psi Blast",
-            "Progressive Pyrokinesis", "Progressive Levitation",
-            "Progressive Clairvoyance", "Progressive Mental Connection",
-            "Progressive Time Bubble", "Progressive Projection",
-            "Progressive Carry Capacity", "Progressive Fluff Pouch",
-            "Progressive Wallet",
-        ):
-            # Require at least the base level (1 copy)
-            checks.append(
-                lambda state, n=display, p=player: state.has(n, p, 1)
-            )
-        else:
-            checks.append(
-                lambda state, n=display, p=player: state.has(n, p)
-            )
+    checks: List[CollectionRule] = [
+        lambda state, n=display, p=player: state.has(n, p)
+        for display in required_items
+    ]
 
     if checks:
         combined: CollectionRule = lambda state, cs=checks: all(c(state) for c in cs)

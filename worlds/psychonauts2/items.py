@@ -39,6 +39,7 @@ Item ID base: 7_792_462
 
 import csv
 import os
+from collections import Counter
 from typing import Dict, List, Optional, Set, Tuple
 from BaseClasses import Item, ItemClassification
 
@@ -365,8 +366,7 @@ def _build_tables() -> Tuple[
 
     # First pass: count how many times each base Name appears so we can
     # disambiguate duplicates with a type suffix (same strategy as locations.py).
-    from collections import Counter as _Counter
-    name_frequency: Dict[str, int] = _Counter(
+    name_frequency: Dict[str, int] = Counter(
         row["Name"] for row in rows if row["Item"] not in _EVENT_ITEM_KEYS
     )
 
