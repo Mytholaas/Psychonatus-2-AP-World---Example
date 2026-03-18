@@ -1,10 +1,18 @@
 # Psychonauts 2 Archipelago – Downloads
 
-This folder contains the two files you need to play Psychonauts 2 in an Archipelago multiworld.
+This folder contains everything you need to play Psychonauts 2 in an Archipelago multiworld.
 
 ---
 
 ## 📥 Files
+
+### `Psychonauts_2_AP_Explanation.txt`
+
+A plain-text overview of how the Psychonauts 2 randomiser works: progressive abilities,
+outfit options, win conditions, figment milestones, starting logic, and the planned
+Unreal Engine 4 mod changes.  Read this first if you're new to the randomiser.
+
+---
 
 ### `psychonauts2.apworld`
 
