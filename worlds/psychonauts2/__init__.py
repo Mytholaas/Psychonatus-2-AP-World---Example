@@ -91,7 +91,7 @@ from .locations import (
     LocationData,
     STORY_COMPLETE_EVENTS,
 )
-from .options import Psy2Options, WinCondition, StartingOutfit, IncludeShopItems
+from .options import Psy2Options, WinCondition, StartingOutfit, IncludeShopItems, WIN_COND_TO_COL
 from .rules import set_rules
 
 if TYPE_CHECKING:
@@ -115,18 +115,6 @@ class Psy2WebWorld(WebWorld):
             ["Psychonauts 2 AP Community"],
         )
     ]
-
-
-# ---------------------------------------------------------------------------
-# Win-condition → CSV column mapping
-# ---------------------------------------------------------------------------
-
-_WIN_COND_TO_COL: Dict[int, str] = {
-    WinCondition.option_normal:                 "WinCondition_Normal",
-    WinCondition.option_all_bosses:             "WinCondition_AllBosses",
-    WinCondition.option_all_scav_hunt:          "WinCondition_AllScavHunt",
-    WinCondition.option_scav_hunt_and_maligula: "WinCondition_ScavHunt_and_Maligula",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +153,7 @@ class Psy2World(World):
         Return the list of item display names that become Required
         (progression) for the chosen win condition.
         """
-        col = _WIN_COND_TO_COL.get(self.options.win_condition.value, "WinCondition_Normal")
+        col = WIN_COND_TO_COL.get(self.options.win_condition.value, "WinCondition_Normal")
         return WIN_CONDITION_REQUIRED_ITEMS.get(col, [])
 
     def create_item(self, name: str) -> Psy2Item:
@@ -458,7 +446,7 @@ class Psy2World(World):
                                    Rank-level gates for pins and ability upgrades
         death_link               – whether death-link is enabled
         """
-        col = _WIN_COND_TO_COL.get(
+        col = WIN_COND_TO_COL.get(
             self.options.win_condition.value, "WinCondition_Normal"
         )
         starting_outfit_key = OUTFIT_ITEM_KEYS[self.options.starting_outfit.value]

@@ -10,6 +10,7 @@ Location ID base: 7_802_462
 
 import csv
 import os
+from collections import Counter
 from typing import Dict, List, Optional, Set, Tuple
 from BaseClasses import Location, Region
 
@@ -162,7 +163,6 @@ def _load_location_data() -> Tuple[
         rows = list(csv.DictReader(fh))
 
     # First pass: count how many times each base Name appears
-    from collections import Counter
     name_frequency: Dict[str, int] = Counter(row["Name"] for row in rows)
 
     by_key: Dict[str, LocationData] = {}

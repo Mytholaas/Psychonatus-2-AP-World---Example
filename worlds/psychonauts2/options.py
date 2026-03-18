@@ -27,6 +27,7 @@ Starting outfit
 """
 
 from dataclasses import dataclass
+from typing import Dict
 from Options import Choice, DeathLink, PerGameCommonOptions, Toggle
 
 
@@ -114,3 +115,12 @@ class Psy2Options(PerGameCommonOptions):
     starting_outfit: StartingOutfit
     include_shop_items: IncludeShopItems
     death_link: DeathLink
+
+
+# Maps each WinCondition option value to its column name in the win-conditions CSV.
+WIN_COND_TO_COL: Dict[int, str] = {
+    WinCondition.option_normal:                 "WinCondition_Normal",
+    WinCondition.option_all_bosses:             "WinCondition_AllBosses",
+    WinCondition.option_all_scav_hunt:          "WinCondition_AllScavHunt",
+    WinCondition.option_scav_hunt_and_maligula: "WinCondition_ScavHunt_and_Maligula",
+}
